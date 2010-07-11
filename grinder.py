@@ -155,11 +155,12 @@ class Status(object):
 			sys.stdout.write('\r%s\r' % ' '*(cols-3))
 			elapsed = time.time() - self.starttime
 			rate = cur/elapsed
-			pct = float(cur/self.pwcount)*100
+			pct = 100*float(cur)/self.pwcount
 			rem = self.pwcount - cur
 			time_rem = rem / rate
-			sys.stdout.write('Attempted: %s/%s (%f %%)\tRemaining: %s (%.02fs)\tElapsed: %.02fs\tRate: %.02fpw/s\r' %
+			sys.stdout.write('\rAttempted: %s/%s (%.02f%%)  Remaining: %s (%.02fs)  Elapsed: %.02fs  Rate: %.02fpw/s' %
 											(cur, self.pwcount, pct, rem, time_rem, elapsed, rate))
+			sys.stdout.flush()
 			time.sleep(self.update_interval)
 	
 def testrun(name,status):
