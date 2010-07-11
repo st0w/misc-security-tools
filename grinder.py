@@ -188,8 +188,8 @@ def run(name,status): #headers, formdata, get_pw):
 	"""get_pw should be a function that will return the next pw
 	"""
 	sys.stdout.write('[%s] Connecting....\n' % name)
-#	soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#	soc.connect((ip,port))
+	soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	soc.connect((ip,port))
 	
 	while running is True:
 		try:
@@ -200,9 +200,9 @@ def run(name,status): #headers, formdata, get_pw):
 			req = '%s\r\n\r\n%s' % (head,formd)
 			print req
 			data = ''
-		#	soc.send(req)
-		#	while data.lower().find('</html') < 0:
-		#		data += soc.recv(8096)
+			soc.send(req)
+			while data.lower().find('</html') < 0:
+				data += soc.recv(8096)
 			if data.lower().find(fail.lower()) < 0:
 				print "Tried password %s, fail string not found.  Possible password detected.  Response: %s" % (pw, data)
 			pwq.task_done()
