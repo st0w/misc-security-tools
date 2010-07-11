@@ -31,13 +31,35 @@ bound, and not disk-I/O-bound.
 TODO::
 I'd like to add determination of rate of password checking, as well as
 an estimated time remaining....
+
+With no sleep in the status function:
+Attempted: 1707657/0	Elapsed: 161.91s	Rate: 10547.13pw/s
+real    2m42.241s
+
+With 0.1s sleep in status:
+Attempted: 1705517/1707657      Remaining: 21408Elapsed: 67.86s:Rate: 25132.48pw/s8.69pw/s
+real    1m8.418s
+
+With 0.5s sleep in status:
+Attempted: 1699800/78578Elapsed: 70.62s:Rate: 24069.01pw/s6.77pw/s
+real    1m11.452s
+
+With a 1s sleep in status:
+Attempted: 1695675/119824       Elapsed: 71.02s Rate: 23874.46pw/s
+real    1m12.356s
+
+With a 5s sleep in status:
+Attempted: 1661375/462821       Elapsed: 70.00s Rate: 23735.55pw/s
+real    1m15.686s
+
 """
 
 import os
 import Queue
 import sys
 import socket
-import threading 
+import threading
+import time
 
 # Useful variables
 threadcount=10
@@ -91,47 +113,69 @@ q_size = 5000
 pwq = Queue.Queue(q_size)
 pwlist = open(wordlist, 'r')
 
-# this is just a quick and dirty way to get the count of pws....
-pwcount = sum(1 for line in open(wordlist))
-sys.stdout.write('Beginning grinding with %s passwords...\n' % pwcount)
+class Status(object):
+	pws_checked=0
+	starttime = 0
+	lock = None
+	pwcount = 0
+	update_interval = float(0.1)
 
-curr_pw = 0
+	def __init__(self, pwcount):
+		self.starttime = time.time()
+		self.lock = threading.Lock()
+		self.pwcount = pwcount
+		sys.stdout.write('Beginning grinding with %s passwords...\n' %
+										self.pwcount)
+		return super(Status, self).__init__()
 
-def update_num_checked():
-	"""Must be synchronous"""
-	pass
-
-def get_next_pw():
-	pw = pw[:len(pw)-1] # remove trailing \n, but not with strip(), which would remove any and all whitespace
-	curr_pw += 1
-	sys.stdout.write(' '*cols)
-	sys.stdout.write('\rAttempt: %s/%s\tWord: %s\r' % (curr_pw,pwcount-curr_pw,pw))
-	print curr_pw
-
-def testrun(self):
+	def update_num_checked(self):
+		"""Must be synchronous"""
+		self.lock.acquire()
+		self.pws_checked += 1
+		self.lock.release()
+	
+	def get_num_checked(self):
+		self.lock.acquire()
+		x = self.pws_checked
+		self.lock.release()
+		return x
+	
+	def status(self):
+		while running is True:
+			cur = self.get_num_checked()
+			sys.stdout.write('\r%s\r' % ' '*(cols-3))
+			elapsed = time.time() - self.starttime
+			rate = cur/elapsed
+			sys.stdout.write('Attempted: %s/%s\tRemaining: %s\tElapsed: %.02fs\tRate: %.02fpw/s\r' %
+											(cur, self.pwcount, self.pwcount-cur, elapsed, rate))
+			time.sleep(self.update_interval)
+	
+def testrun(name,status):
 	"""Just validates the threading/synchronization works"""
-	fn = 'output_thread_%s' % self.getName()
+	fn = 'output_thread_%s' % name
 	f = open(fn, 'w')
 	while running is True:
 		try:
 			pw = pwq.get(block=False)
-			line = '%s\n' % pw
-			f.write(line)
+			f.write(pw)
+			f.write("\n")
+			pwq.task_done()
+			status.update_num_checked()
 		except Queue.Empty:
 			pass
-	f.close()
+#		print pwq.qsize()
 
-def run(self, headers, formdata, get_pw):
+def run(headers, formdata, get_pw):
 	"""get_pw should be a function that will return the next pw
 	"""
 	print "thread"
-	sys.stdout.write('[%s] Connecting....' % self.getName())
+	sys.stdout.write('[%s] Connecting....' % getName())
 	#soc = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	#soc.connect((ip,port))
 	sys.stdout.write('done\n')
 	
 	"""Get next word to attempt"""
-	pw = get_pw()
+	pw = pwq.get()
 	formd = formdata % pw
 	head = headers % len(formd)
 	req = '%s\r\n\r\n%s' % (head,formd)
@@ -141,27 +185,39 @@ def run(self, headers, formdata, get_pw):
 #		data += soc.recv(8096)
 	if data.lower().find(fail.lower()) < 0:
 		print "Tried password %s, fail string not found.  Possible password detected.  Response: %s" % (pw, data)
-		running = False
+	pwq.task_done()
+#		running = False
 #			break
 
 i = 0
 
-running = True
-threads = []
-# Spawn a bunch of threads... each will wait until data become available
-# in the pwq before they try to send data
-for x in range(threadcount):
-	t = threading.Thread(target=testrun, name=None)
-	t.start()
-	threads.append(t)
+# this is just a quick and dirty way to get the count of pws....
+pwcount = sum(1 for line in open(wordlist))
 
-# Loop over wordlist, putting words into Queue as spaces are available
+running = True
+status = Status(pwcount)
+
+"""
+Spawn a bunch of threads... each will wait until data become available
+in the pwq before they try to send data
+"""
+for x in range(threadcount):
+	t = threading.Thread(target=testrun, kwargs={'name':x, 'status':status})
+	t.start()
+
+"""Fire up the status reporting thread"""
+t = threading.Thread(target=status.status)
+t.start()
+
+"""Loop over wordlist, put words into Queue as spaces are available"""
 for pw in pwlist:
+	"""Removing the single trailing '\n' but don't strip()"""
+	pw = pw[:len(pw)-1]
+	
 	"""Append to password queue"""
 	pwq.put(pw)
-	print "Queue length: %s" % pwq.qsize()
-
+	
 # Now wait until every item has been processed - blocking
 pwq.join()
-
+running = False
 sys.stdout.write('\nDone\n')
