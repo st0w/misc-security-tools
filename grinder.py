@@ -158,20 +158,26 @@ class Status(object):
 			pct = 100*float(cur)/self.pwcount
 			rem = self.pwcount - cur
 			time_rem = rem / rate
-			sys.stdout.write('\rAttempted: %s/%s (%.02f%%)  Remaining: %s (%.02fs)  Elapsed: %.02fs  Rate: %.02fpw/s' %
-											(cur, self.pwcount, pct, rem, time_rem, elapsed, rate))
+			
+			outstr = '\rAttempted: %s/%s (%.02f%%)  Remaining: %s (%.02fs)  ' \
+							 'Elapsed: %.02fs  Rate: %.02fpw/s' %	\
+							 (cur, self.pwcount, pct, rem, time_rem, elapsed, rate)
+
+			outstr += ' '*(cols - len(outstr) - 1)
+							 
+			sys.stdout.write(outstr)
 			sys.stdout.flush()
 			time.sleep(self.update_interval)
 	
 def testrun(name,status):
 	"""Just validates the threading/synchronization works"""
 	fn = 'output_thread_%s' % name
-	f = open(fn, 'w')
+#	f = open(fn, 'w')
 	while running is True:
 		try:
 			pw = pwq.get(block=False)
-			f.write(pw)
-			f.write("\n")
+#			f.write(pw)
+#			f.write("\n")
 			pwq.task_done()
 			status.update_num_checked()
 		except Queue.Empty:
