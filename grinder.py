@@ -36,8 +36,15 @@ With no sleep in the status function:
 Attempted: 1707657/0	Elapsed: 161.91s	Rate: 10547.13pw/s
 real    2m42.241s
 
+With 0.01s sleep:
+Attempted: 1707563/1707657      Remaining: 94878	Elapsed: 58.64s	Rate: 29118.97pw/s
+real    0m59.364s
+
+Attempted: 1707657/1707657 (100.00%)    Remaining: 0 (0.00s)    Elapsed: 61.42s Rate: 27801.47pw/s
+real    1m1.896s
+
 With 0.1s sleep in status:
-Attempted: 1705517/1707657      Remaining: 21408Elapsed: 67.86s:Rate: 25132.48pw/s8.69pw/s
+Attempted: 1705517/1707657      Remaining: Elapsed: 67.86s Rate: 25132.48pw/s
 real    1m8.418s
 
 With 0.5s sleep in status:
@@ -118,7 +125,7 @@ class Status(object):
 	starttime = 0
 	lock = None
 	pwcount = 0
-	update_interval = float(0.1)
+	update_interval = float(0.01)
 
 	def __init__(self, pwcount):
 		self.starttime = time.time()
@@ -141,13 +148,18 @@ class Status(object):
 		return x
 	
 	def status(self):
+		while self.get_num_checked() < 1: pass # hackish way to ensure rate is > 0 so we don't div-by-zero below
+		
 		while running is True:
 			cur = self.get_num_checked()
 			sys.stdout.write('\r%s\r' % ' '*(cols-3))
 			elapsed = time.time() - self.starttime
 			rate = cur/elapsed
-			sys.stdout.write('Attempted: %s/%s\tRemaining: %s\tElapsed: %.02fs\tRate: %.02fpw/s\r' %
-											(cur, self.pwcount, self.pwcount-cur, elapsed, rate))
+			pct = float(cur/self.pwcount)*100
+			rem = self.pwcount - cur
+			time_rem = rem / rate
+			sys.stdout.write('Attempted: %s/%s (%f %%)\tRemaining: %s (%.02fs)\tElapsed: %.02fs\tRate: %.02fpw/s\r' %
+											(cur, self.pwcount, pct, rem, time_rem, elapsed, rate))
 			time.sleep(self.update_interval)
 	
 def testrun(name,status):
