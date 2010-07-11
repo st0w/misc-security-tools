@@ -148,7 +148,8 @@ class Status(object):
 		return x
 	
 	def status(self):
-		while self.get_num_checked() < 1: pass # hackish way to ensure rate is > 0 so we don't div-by-zero below
+		"""hackish way to ensure rate is > 0 so don't div-by-zero below"""
+		while self.get_num_checked() < 1: time.sleep(self.update_interval)
 		
 		while running is True:
 			cur = self.get_num_checked()
@@ -182,7 +183,6 @@ def testrun(name,status):
 			status.update_num_checked()
 		except Queue.Empty:
 			pass
-#		print pwq.qsize()
 
 def run(headers, formdata, get_pw):
 	"""get_pw should be a function that will return the next pw
@@ -208,13 +208,14 @@ def run(headers, formdata, get_pw):
 #		running = False
 #			break
 
-i = 0
-
 # this is just a quick and dirty way to get the count of pws....
 pwcount = sum(1 for line in open(wordlist))
-
 running = True
+
+"""Fire up the status reporting thread"""
 status = Status(pwcount)
+t = threading.Thread(target=status.status)
+t.start()
 
 """
 Spawn a bunch of threads... each will wait until data become available
@@ -223,10 +224,6 @@ in the pwq before they try to send data
 for x in range(threadcount):
 	t = threading.Thread(target=testrun, kwargs={'name':x, 'status':status})
 	t.start()
-
-"""Fire up the status reporting thread"""
-t = threading.Thread(target=status.status)
-t.start()
 
 """Loop over wordlist, put words into Queue as spaces are available"""
 for pw in pwlist:
