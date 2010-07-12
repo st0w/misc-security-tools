@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Simple HTTP Grinder
+Simple Multi-threaded HTTP Grinder
 
 Copyright (C) 2010 st0w <st0w@st0w.com>
 
