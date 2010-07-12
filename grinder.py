@@ -11,7 +11,9 @@ Very simple password grinder developed for testing a 2Wire router.  It
 should just as easily work on any HTTP session - all it does is submit
 a form via POST.  Nothing fancy here, just reads a wordlist and runs
 through them each consecutively. Currently expects HTTP keep-alive to
-function, does not try to reconnect if the socket drops.
+function, does not try to reconnect if the socket drops.  Heck, this
+will work for grinding pretty much any TCP-based protocol that will
+sequentially process requests without dropping in between. 
 
 Looks for the string in variable 'fail' to determine if an attempt was
 unsuccessful.  Assumes anything without that string is either an
