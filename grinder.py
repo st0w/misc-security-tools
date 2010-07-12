@@ -70,7 +70,7 @@ Cache-Control: max-age=0
 Origin: http://192.168.1.254
 Content-Type: application/x-www-form-urlencoded
 Accept: application/xml,application/xhtml+xml,text/html;q=0.9,text/plain;q=0.8,image/png,*/*;q=0.5
-Accept-Encoding: gzip,deflate,sdch
+Accept-Encoding: 
 Accept-Language: en-US,en;q=0.8
 Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.3"""
 
