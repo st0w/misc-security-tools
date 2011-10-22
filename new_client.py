@@ -53,8 +53,8 @@ import os
 # ---*< Code goes here... >*---------------------------------------------------
 
 # Check for existence of necessary stuff...
-for x in [ln, openssl, basedir, xpext_file, opensslcnf, newcerts, 
-	        wireless_basedir, wireless_certs]:
+for x in [ln, openssl, basedir, xpext_file, opensslcnf, newcerts,
+            wireless_basedir, wireless_certs]:
     if not os.path.exists(x):
         print "%s does not exist, cannot continue." % x
         os._exit(-1)
@@ -79,7 +79,7 @@ for x in [key_path, req_path, cert_path, wireless_cert_path, p12_path]:
 winning = raw_input('Windows client [y/N]: ')
 winning = winning.upper() == 'Y'
 
-client_expire = raw_input('Enter client cert expiration in days [%d]: ' % 
+client_expire = raw_input('Enter client cert expiration in days [%d]: ' %
                           client_expire) or client_expire
 
 # I had to patch getpass.py on Solaris to prevent echoing...
@@ -88,12 +88,12 @@ passwd = 'a'
 passwd_v = 'b'
 
 while passwd != passwd_v or len(passwd) < 12:
-	passwd = getpass('Enter client cert password: ')
-	passwd_v = getpass('Verify password: ')
-	if passwd != passwd_v:
-		print "Error: passwords don't match.  Try again."
-	if len(passwd) < 12:
-		print "Error: password must be at least twelve chars long"
+    passwd = getpass('Enter client cert password: ')
+    passwd_v = getpass('Verify password: ')
+    if passwd != passwd_v:
+        print "Error: passwords don't match.  Try again."
+    if len(passwd) < 12:
+        print "Error: password must be at least twelve chars long"
 
 ca_pass = getpass('Enter the CA password: ')
 
@@ -101,21 +101,21 @@ ca_pass = getpass('Enter the CA password: ')
 print 'Creating client cert...'
 create_client = ("%s req -new -keyout %s -out %s -days %s -config %s "
                  "-passout pass:'%s' "
-								 "-subj '/C=US/ST=New York/L=Brooklyn/organizationName=st0w"
-								        "/organizationalUnitName=Security/CN=%s'" % 
-                 (openssl, key_path, req_path, client_expire, opensslcnf, 
-								  passwd, client))
+                                 "-subj '/C=US/ST=New York/L=Brooklyn/organizationName=st0w"
+                                        "/organizationalUnitName=Security/CN=%s'" %
+                 (openssl, key_path, req_path, client_expire, opensslcnf,
+                                  passwd, client))
 os.system(create_client)
 
 # Sign client cert
 print 'Signing client cert...'
 sign_client = ("%s ca -config %s -passin pass:'%s' -out %s -days %s "
                "-infiles %s " %
-               (openssl, opensslcnf, ca_pass, cert_path,client_expire,
-							  req_path))
+               (openssl, opensslcnf, ca_pass, cert_path, client_expire,
+                              req_path))
 # Add Windows extensions if needed
 if winning:
-    sign_client = ('%s -extensions %s -extfile %s' % 
+    sign_client = ('%s -extensions %s -extfile %s' %
                    (sign_client, xpext_extensions, xpext_file))
 os.system(sign_client)
 
