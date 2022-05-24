@@ -42,7 +42,6 @@ func printStatus(host string, openPorts chan int, portsChecked *uint32) {
 }
 
 func main() {
-	//var openPorts []int
 	portCount := MAX_PORT + 1 - MIN_PORT
 	var portsChecked uint32                   // uint16 would be enough for a single system
 	goroutines := make(chan bool, GOROUTINES) // concurrency control
