@@ -54,6 +54,15 @@ func portscan(asyncCount int, host string, startPort uint32, endPort uint32, por
 	var completed = make(chan bool)
 
 	go func() {
+		// Tasks to do at completion of scanning
+		defer func() {
+			// Close openPorts channel since it's buffered
+			close(openPorts)
+
+			// Send signal to anything waiting on buffered completion channel
+			completed <- true
+		}()
+
 		for port := startPort; port <= endPort; port++ {
 			goroutines <- true // Wait until allowed to go
 
@@ -70,11 +79,6 @@ func portscan(asyncCount int, host string, startPort uint32, endPort uint32, por
 			}(port)
 		}
 
-		// When done, send signal
-		completed <- true
-
-		// Close openPorts channel once everything is done, so we can pull all values off it to display
-		close(openPorts)
 	}()
 
 	return openPorts, completed
@@ -93,11 +97,10 @@ func main() {
 	openPorts, completed := portscan(GOROUTINES, host, MIN_PORT, MAX_PORT, &portsChecked)
 	printStatus(host, openPorts, &portsChecked)
 
-	// Wait for everything to finish by waiting until nothing left in channel, then print the results
+	// Wait for scanning to finish
 	<-completed
 
 	fmt.Printf("\nScanned ports: %d Open ports: %d\n\t[ ", portsChecked, len(openPorts))
-
 	for p := range openPorts {
 		fmt.Printf("%d ", p)
 	}
