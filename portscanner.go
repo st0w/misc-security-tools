@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"strings"
-	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -15,12 +14,10 @@ const MAX_PORT = 65535 // Highest port number to check
 
 func scanPort(host string, port int) bool {
 	// Return values: true = connected; false = failed
-
-	c, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
+	_, err := net.Dial("tcp", fmt.Sprintf("%s:%d", host, port))
 	if err != nil {
 		return false
 	}
-	c.Close()
 
 	// Log a successful connection
 	return true
@@ -31,11 +28,13 @@ func usage() {
 }
 
 // This runs a goroutine that just loops forever and will die when the app finishes
-func printStatus(host string, numPorts int, portsChecked *int) {
+func printStatus(host string, openPorts chan int, portsChecked *uint32) {
 	go func() {
+		var spinner = "-\\|/"
 		fmt.Printf("\n")
 		for i := 0; ; i = i % 3 {
-			fmt.Printf("\rScanning %s [%d/%d]%s  ", host, *portsChecked, numPorts, strings.Repeat(".", i+1))
+			fmt.Printf("%s Scanning %s [%d/%d] Open ports:%d\r",
+				string(spinner[i]), host, *portsChecked, cap(openPorts), len(openPorts))
 			time.Sleep(100 * time.Millisecond)
 			i++
 		}
@@ -43,9 +42,11 @@ func printStatus(host string, numPorts int, portsChecked *int) {
 }
 
 func main() {
-	var openPorts []int
-	var wg sync.WaitGroup // number of working goroutines
-	var portsChecked int
+	//var openPorts []int
+	portCount := MAX_PORT + 1 - MIN_PORT
+	var portsChecked uint32                   // uint16 would be enough for a single system
+	goroutines := make(chan bool, GOROUTINES) // concurrency control
+	openPorts := make(chan int, portCount)    // Store list of open ports, concurrency-safe, buffered
 
 	if len(os.Args) < 2 {
 		usage()
@@ -54,31 +55,33 @@ func main() {
 
 	var host = os.Args[1]
 
-	// Channel to fill with all port numbers to be checked. Buffered to the size
-	// of all ports to be checked to prevent deadlocking.
-	uncheckedPorts := make(chan int, MAX_PORT+1-MIN_PORT)
+	printStatus(host, openPorts, &portsChecked)
 
-	for i := MIN_PORT; i <= MAX_PORT; i++ {
-		uncheckedPorts <- i
-		wg.Add(1)
-	}
-
-	printStatus(host, len(uncheckedPorts), &portsChecked)
-
-	// Create however many goroutines requested
-	for i := 0; i < GOROUTINES; i++ {
-		go func() {
-			for port := range uncheckedPorts {
-				if portOpen := scanPort(host, port); portOpen {
-					openPorts = append(openPorts, port)
-				}
-				wg.Done()
-				portsChecked++
+	for port := MIN_PORT; port <= MAX_PORT; port++ {
+		goroutines <- true // Wait until allowed to go
+		go func(port int) {
+			defer func() { <-goroutines }() // release lock when done
+			// Check the port
+			if portOpen := scanPort(host, port); portOpen {
+				openPorts <- port
 			}
-		}()
+			atomic.AddUint32(&portsChecked, 1)
+		}(port)
 	}
 
-	// Wait for everything to finish, then print the results
-	wg.Wait()
-	fmt.Printf("\nOpen ports: %d\n", openPorts)
+	// Wait for everything to finish by waiting until nothing left in channel, then print the results
+	for i := 0; i < cap(goroutines); i++ {
+		goroutines <- true
+	}
+
+	// Close openPorts channel once everything is done, so we can pull all values off it to display
+	close(openPorts)
+
+	//fmt.Printf("\nOpen ports: %d\n", openPorts)
+	fmt.Printf("\nOpen ports:\n\t[ ")
+
+	for p := range openPorts {
+		fmt.Printf("%d ", p)
+	}
+	fmt.Printf("]\n")
 }
